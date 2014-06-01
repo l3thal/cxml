@@ -105,7 +105,8 @@
      (utf8dom-file utf8-impl :pathname "dom-impl" :depends-on ("package"))
      #+rune-is-integer
      (utf8dom-file utf8-builder :pathname "dom-builder" :depends-on (utf8-impl))
-     (:file "dom-sax"         :depends-on ("package")))
+     (:file "dom-sax"         :depends-on ("package"))
+     (:file "cxml-ext" :depends-on ("package" rune-impl rune-builder "dom-sax")))
     :depends-on (:cxml-xml))
 
 (asdf:defsystem :cxml-klacks
