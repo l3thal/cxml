@@ -468,3 +468,117 @@
            (values :ztag (cons name atts)))
           (t
            (wf-error zinput "syntax error in read-tag-2.")) )))
+
+(defun read-comment-content (input &aux d)
+  ;; REDONE allow nesting of comments
+  (let ((nested))
+    (with-rune-collector (collect)
+      (block nil
+	(tagbody
+	 state-1
+	   (setf d (read-rune input))
+	   (when (eq d :eof)
+	     (eox input))
+	   (unless (data-rune-p d)
+	     (wf-error input "Illegal char: ~S." d))
+	   (when (rune= d #/-) (go state-2))
+	   (when (rune= d #/<) (go state-4))
+	   (collect d)
+	   (go state-1)
+	 state-2 ;; #/- seen
+	   (setf d (read-rune input))
+	   (when (eq d :eof)
+	     (eox input))
+	   (unless (data-rune-p d)
+	     (wf-error input "Illegal char: ~S." d))
+	   (when (rune= d #/-) (go state-3))
+	   (collect #/-)
+	   (collect d)
+	   (go state-1)
+	 state-3 ;; #/- #/- seen
+	   (setf d (read-rune input))
+	   (when (eq d :eof)
+	     (eox input))
+	   (unless (data-rune-p d)
+	     (wf-error input "Illegal char: ~S." d))
+	   (when (rune= d #/>)
+	     (if nested
+		 (progn
+		   (setf nested nil)
+		   (collect #/-)
+		   (collect #/-)
+		   (collect d)
+		   (go state-1))
+		 (return)))
+	   ;; REDONE set nesting when -- detected
+	   (setf nested t)
+	   ;; REDONE dont error when nesting
+	   ;; (wf-error input "'--' not allowed in a comment")
+	   (when (rune= d #/-)
+	     (collect #/-)
+	     (go state-3))
+	   (collect #/-)
+	   (collect #/-)
+	   (collect d)
+	   (go state-1)
+	 state-4 ;; #/<
+	   (setf d (read-rune input))
+	   (when (eq d :eof)
+	     (eox input))
+	   (unless (data-rune-p d)
+	     (wf-error input "Illegal char: ~S." d))
+	   (when (rune= d #/!) (go state-5))
+	   (collect #\<)
+	   (collect d)
+	   (go state-1)
+	 state-5
+	   (setf d (read-rune input))
+	   (when (eq d :eof)
+	     (eox input))
+	   (unless (data-rune-p d)
+	     (wf-error input "Illegal char: ~S." d))
+	   (when (rune= d #/\[)
+	     (collect #\<)
+	     (collect #\!)
+	     (collect d)
+	     (go state-5))
+	   (when (rune= d #/>)
+	     (collect d)
+	     (return))
+	   (when (not (rune= d #/-))
+	     (collect d))
+	   (go state-5))))))
+
+(defun read-token-after-|<!| (input)
+  (let ((d (read-rune input))
+	(p (peek-rune input)))
+    (cond ((eq d :eof)
+           (eox input "EOF after \"<!\"."))
+          ((name-start-rune-p d)
+           (unread-rune d input)
+           (let ((name (read-name-token input)))
+             (cond ((rod= name '#.(string-rod "ELEMENT")) :|<!ELEMENT|)
+                   ((rod= name '#.(string-rod "ENTITY")) :|<!ENTITY|)
+                   ((rod= name '#.(string-rod "ATTLIST")) :|<!ATTLIST|)
+                   ((rod= name '#.(string-rod "NOTATION")) :|<!NOTATION|)
+                   ((rod= name '#.(string-rod "DOCTYPE")) :|<!DOCTYPE|)
+                   (t
+                    (wf-error  input"`<!~A' unknown." (rod-string name))))))
+	  ((and (rune= #/\[ d)
+		(not (rune= #/C p)))
+	   (unread-rune d input)
+	   (values
+	    :COMMENT
+	    (read-comment-content input)))
+	  ((rune= #/- d)
+           (setf d (read-rune input))
+           (cond ((rune= #/- d)
+                  (values
+                   :COMMENT
+                   (read-comment-content input)))
+                 (t
+                  (wf-error input"Bad character ~S after \"<!-\"" d))))
+          ((rune= #/\[ d)
+           (values :|<![| nil))
+          (t
+           (wf-error input "Bad character ~S after \"<!\"" d)))))
