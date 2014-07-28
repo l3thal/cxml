@@ -45,6 +45,8 @@
 (defun p/etag (input qname)
   (multiple-value-bind (cat2 sem2) (read-token input)
     (unless (and (eq cat2 :etag)
+		 ;; REDONE: change eq to string-equal
+		 ;; (eq (car sem2) qname)
 		 (string-equal (car sem2) qname))
       (wf-error input "Bad nesting. ~S / ~S"
 		(mu qname)
