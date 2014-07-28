@@ -42,6 +42,16 @@
     (pop (base-stack *ctx*))
     (validate-end-element *ctx* qname)))
 
+(defun p/etag (input qname)
+  (multiple-value-bind (cat2 sem2) (read-token input)
+    (unless (and (eq cat2 :etag)
+		 (string-equal (car sem2) qname))
+      (wf-error input "Bad nesting. ~S / ~S"
+		(mu qname)
+		(mu (cons cat2 sem2))))
+    (when (cdr sem2)
+      (wf-error input "no attributes allowed in end tag"))))
+
 (defmethod sax:start-element ((sink sink) namespace-uri local-name qname attributes)
   (declare (ignore namespace-uri local-name))
   (maybe-close-tag sink)
