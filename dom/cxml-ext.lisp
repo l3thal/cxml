@@ -575,6 +575,7 @@
                    ((rod= name '#.(string-rod "ATTLIST")) :|<!ATTLIST|)
                    ((rod= name '#.(string-rod "NOTATION")) :|<!NOTATION|)
                    ((rod= name '#.(string-rod "DOCTYPE")) :|<!DOCTYPE|)
+		   ((rod= name '#.(string-rod "doctype")) :|<!DOCTYPE|)
                    (t
                     (wf-error  input"`<!~A' unknown." (rod-string name))))))
 	  ((and (rune= #/\[ d)
