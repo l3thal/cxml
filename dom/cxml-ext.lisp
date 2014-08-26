@@ -231,8 +231,9 @@
 		  (when (rune= #/& delim)
 		    (read-entity-like input))
 		  (return))
-		 ((rune= c #/<)
-		  (wf-error input "'<' not allowed in attribute values"))
+		 ;; REDONE: remove this check as I dont care if there are < in the attribute or not
+		 ;; ((rune= c #/<)
+		 ;;  (wf-error input "'<' not allowed in attribute values"))
 		 ;; REDONE fix entities inside properties, ignore entities inside attrs
 		 ;; Not needed because of above
 		 ;; ((rune= #/& c)
