@@ -290,6 +290,7 @@
 	 ;; REDONE: remove "," and treat as space
 	 (until (or (eq :eof (peek-rune input))
 		    (rune= #/> (peek-rune input))
+                    (rune= #// (peek-rune input))
 		    (name-start-rune-p (peek-rune input)))
 	   (consume-rune input))
 	 ;; no longer needed because of above
