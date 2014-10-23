@@ -4,6 +4,72 @@
 (defparameter *bad-closers* '(("icon" "i")))
 (defparameter *parent-closers* '(("li" "ul" "ol")))
 
+(defun p/document
+    (input handler
+     &key validate dtd root entity-resolver disallow-internal-subset
+          (recode t))
+  ;; check types of user-supplied arguments for better error messages:
+  (check-type validate boolean)
+  (check-type recode boolean)
+  (check-type dtd (or null extid))
+  (check-type root (or null rod))
+  (check-type entity-resolver (or null function symbol))
+  (check-type disallow-internal-subset boolean)
+  #+rune-is-integer
+  (when recode
+    (setf handler (make-recoder handler #'rod-to-utf8-string)))
+
+  ;; REDONE: Remove invalid bytes from the beginning of stream
+  (labels ((validate-start (xstream)
+             (let ((c (peek-rune xstream)))
+               (unless (rune= c #/<)
+                 (consume-rune xstream)
+                 (validate-start xstream)))))
+    (let* ((xstream (car (zstream-input-stack input)))
+           (name (xstream-name xstream))
+           (base (when name (stream-name-uri name)))
+           (*ctx*
+            (make-context :handler handler
+                          :main-zstream input
+                          :entity-resolver entity-resolver
+                          :base-stack (list (or base ""))
+                          :disallow-internal-subset disallow-internal-subset))
+           (*validate* validate)
+           (*namespace-bindings* *initial-namespace-bindings*))
+      (validate-start xstream)
+      (sax:register-sax-parser handler (make-instance 'cxml-parser :ctx *ctx*))
+      (sax:start-document handler)
+      ;; document ::= XMLDecl? Misc* (doctypedecl Misc*)? element Misc*
+      ;; Misc ::= Comment | PI |  S
+      ;; xmldecl::='<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
+      ;; sddecl::= S 'standalone' Eq (("'" ('yes' | 'no') "'") | ('"' ('yes' | 'no') '"'))
+      (let ((*data-behaviour* :DTD))
+        ;; optional XMLDecl?
+        (p/xmldecl input)
+        ;; Misc*
+        (p/misc*-2 input)
+        ;; (doctypedecl Misc*)?
+        (cond
+          ((eq (peek-token input) :<!DOCTYPE)
+           (p/doctype-decl input dtd)
+           (p/misc*-2 input))
+          (dtd
+           (synthesize-doctype dtd input))
+          ((and validate (not dtd))
+           (validity-error "invalid document: no doctype")))
+        (ensure-dtd)
+        ;; Override expected root element if asked to
+        (when root
+          (setf (model-stack *ctx*) (list (make-root-model root))))
+        ;; element
+        (let ((*data-behaviour* :DOC))
+          (fix-seen-< input)
+          (p/element input))
+        ;; optional Misc*
+        (p/misc*-2 input)
+        (p/eof input)
+        (sax:end-document handler)))))
+
 (defun p/element (input)
   (multiple-value-bind (cat n-b new-b uri lname qname attrs) (p/sztag input)
     (sax:start-element (handler *ctx*) uri lname qname attrs)
