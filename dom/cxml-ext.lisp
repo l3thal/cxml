@@ -19,7 +19,7 @@
   (when recode
     (setf handler (make-recoder handler #'rod-to-utf8-string)))
 
-  ;; REDONE: Remove invalid bytes from the beginning of stream
+  ;; REDONE: Remove invalid bytes from the beginning of stream.
   (labels ((validate-start (xstream)
              (let ((c (peek-rune xstream)))
                (unless (rune= c #/<)
@@ -36,6 +36,7 @@
                           :disallow-internal-subset disallow-internal-subset))
            (*validate* validate)
            (*namespace-bindings* *initial-namespace-bindings*))
+      ;; REDONE: Remove invalid bytes from the beginning of stream.
       (validate-start xstream)
       (sax:register-sax-parser handler (make-instance 'cxml-parser :ctx *ctx*))
       (sax:start-document handler)
