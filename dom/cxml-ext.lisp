@@ -318,6 +318,10 @@
 		 ;; ((space-rune-p c)
 		 ;;  (collect #/u+0020))
 		 ;; REDONE check for end tag in case a space demlim attribute reaches end of open tag
+                 ((rune= #/\' c)
+                  (collect #/\"))
+                 ((rune= #/\" c)
+                  (collect #/\'))
 		 ((and (rune= #/> c)
 		       (char= #\space delim))
 		  (unread-rune c input)
