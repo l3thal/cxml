@@ -22,7 +22,8 @@
   ;; REDONE: Remove invalid bytes from the beginning of stream.
   (labels ((validate-start (xstream)
              (let ((c (peek-rune xstream)))
-               (unless (rune= c #/<)
+               (unless (or (eq :eof c)
+                            (rune= c #/<))
                  (consume-rune xstream)
                  (validate-start xstream)))))
     (let* ((xstream (car (zstream-input-stack input)))
