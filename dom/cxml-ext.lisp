@@ -668,3 +668,9 @@
            (values :|<![| nil))
           (t
            (wf-error input "Bad character ~S after \"<!\"" d)))))
+
+(defun find-namespace-binding (prefix)
+  (cdr (or (assoc (or prefix #"") *namespace-bindings* :test #'rod=)
+           ;; REDONE: ignore error return a blank uri
+	   ;; (wf-error nil "Undeclared namespace prefix: ~A" (rod-string prefix))
+           '("". ""))))
